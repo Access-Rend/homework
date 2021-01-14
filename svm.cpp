@@ -1,15 +1,15 @@
 #include <algorithm>
 #include <iostream>
 #include <fstream>
+#include <cstring>
 #include <vector>
 #include <ctime>
-#include <cmath>
 /*
  * 0<alpha_i<C
  */
 using namespace std;
 const int N = 1e5 + 10;
-const double C = 20, eps = 1e-4, tolerance = 1e-3;
+const double C = 100, eps = 1e-3, tolerance = 1e-3;
 int n, m;
 double x[1000][1000];
 int y[1000];
@@ -19,22 +19,22 @@ double alp[1000],err[1000];
 //vector<double> alp, err;
 double b;
 
-double dot(vector<double> &a, vector<double> &b) {//correct
+double dot(vector<double> &a, vector<double> &b) {
     static double res = 0;
     for (int i = 0; i < m; i++)
         res += a[i] * b[i];
     return res;
 }
-double dot(double *a, double *b) {//correct
-    static double res = 0;
+double dot(double *a, double *b) {
+    double res = 0;
     for (int i = 0; i < m; i++)
         res += a[i] * b[i];
     return res;
 }
-double Kernel(double*x1, double*x2) {//correct
+double Kernel(double*x1, double*x2) {
     return dot(x1,x2);
 }
-double Kernel(vector<double> &x1, vector<double> &x2) {//correct
+double Kernel(vector<double> &x1, vector<double> &x2) {
 //    double tmp = 0;
 //    const double sigma = 50;
 //    for (int i = 0; i < m; i++)
@@ -43,12 +43,9 @@ double Kernel(vector<double> &x1, vector<double> &x2) {//correct
     return dot(x1,x2);
 }
 double f(double*_x) {//correct
-    static double res = 0;
+    double res = 0;
     for (int i = 0; i < n; i++)
-        if(abs(alp[i])<eps)
-            continue;
-        else
-            res += alp[i] * y[i] * Kernel(x[i], _x);
+        res += alp[i] * y[i] * Kernel(x[i], _x);
     res -= b;
     return res;
 }
@@ -68,14 +65,14 @@ inline bool update_alp1alp2(int &i, int &j) {
         return false;
     int &y1 = y[i], &y2 = y[j], s = y[i] * y[j];
     double &alp1 = alp[i], &alp2 = alp[j], a1new, a2new, bnew;
-    static double E1, E2, L, H, Lobj, Hobj, delta_b;
-    static double K11 = Kernel(x[i], x[i]),
+    double E1, E2, L, H, L_obj, H_obj;
+    double K11 = Kernel(x[i], x[i]),
             K22 = Kernel(x[j], x[j]),
             K12 = Kernel(x[i], x[j]);
-    static double eta = K11 + K22 - 2 * K12;
+    double eta = K11 + K22 - 2 * K12;
 
-    E1 = (alp1 > 0 && alp1 < C) ? E1 = err[i] : E1 = f(x[i]) - y1;
-    E2 = (alp2 > 0 && alp2 < C) ? E2 = err[j] : E1 = f(x[j]) - y2;
+    E1 = (0 < alp1 && alp1 < C) ? err[i] : f(x[i]) - y1;
+    E2 = (0 < alp2 && alp2 < C) ? err[j] : f(x[j]) - y2;
     /*
      * updating for alpha2_new
      */
@@ -105,12 +102,12 @@ inline bool update_alp1alp2(int &i, int &j) {
         else if (a2new > H)
             a2new = H;
     } else {
-        static double t1 = -eta / 2, t2 = y2 * (E1 - E2) + eta * alp2;
-        Lobj = t1 * L * L + t2 * L;
-        Hobj = t1 * H * H + t2 * H;
-        if (Lobj - Hobj > eps)
+        double t1 = -eta / 2, t2 = y2 * (E1 - E2) + eta * alp2;
+        L_obj = t1 * L * L + t2 * L;
+        H_obj = t1 * H * H + t2 * H;
+        if (L_obj - H_obj > eps)
             a2new = L;
-        else if (Lobj - Hobj < -eps)
+        else if (L_obj - H_obj < -eps)
             a2new = H;
         else
             a2new = alp2;
@@ -129,10 +126,10 @@ inline bool update_alp1alp2(int &i, int &j) {
     /*
      * updating for constant b
      */
-    if (a1new > 0 && a1new < C)
-        bnew = b + E2 + y1 * (a1new - alp1) * K12 + y2 * (a2new - alp2) * K22;
+    if (0 < a1new && a1new < C)
+        bnew = b + E1 + y1 * (a1new - alp1) * K11 + y2 * (a2new - alp2) * K12;
     else {
-        static double b1, b2;
+        double b1, b2;
         b1 = b + E1 + y1 * (a1new - alp1) * K11 + y2 * (a2new - alp2) * K12;
         b2 = b + E2 + y1 * (a1new - alp1) * K12 + y2 * (a2new - alp2) * K22;
         bnew = (b1 + b2) / 2;
@@ -140,7 +137,7 @@ inline bool update_alp1alp2(int &i, int &j) {
     /*
      * updating for err
      */
-    static double t1 = y1 * (a1new - alp1), t2 = y2 * (a2new - alp2);
+    double t1 = y1 * (a1new - alp1), t2 = y2 * (a2new - alp2);
     for (int k = 0; k < n; k++)
         if (0 < alp[k] && alp[k] < C)
             err[k] += t1 * Kernel(x[k], x[i]) + t2 * Kernel(x[k], x[j]) - (bnew - b);
@@ -154,7 +151,7 @@ bool examine_first(int &i, double &E1) {
     static int j = -1;
     static double tmax = 0, E2;
     for (int k = 0; k < n; k++) {
-        if (alp[k] > 0 && alp[k] < C) { // find another support vector
+        if (0 < alp[k] && alp[k] < C) { // 在间隔边界即支持向量上寻找满足条件的第二个点
             E2 = err[k];
             if (abs(E1 - E2) > tmax)
                 tmax = abs(E1 - E2), j = k;
@@ -171,12 +168,12 @@ bool examine_all(int &i) {
      * 先遍历支持向量，再遍历其他
      */
     for (int j = 0; j < n; j++) {
-        if (alp[j] > 0 && alp[j] < C)
+        if (0 < alp[j] && alp[j] < C)
             if (update_alp1alp2(i, j))
                 return true;
     }
     for (int j = 0; j < n; j++) {
-        if (alp[j] <=  0 || alp[j] >= C)
+//        if (alp[j] <=  0 || alp[j] >= C) 可能有问题
             if (update_alp1alp2(i, j))
                 return true;
     }
@@ -186,7 +183,7 @@ bool examine_all(int &i) {
 bool examine_example(int &i) {
     int &y1 = y[i];
     double &alp1 = alp[i], E1, r1;
-    if (alp1 > 0 && alp1 < C)
+    if (0 > alp1 && alp1 < C)
         E1 = err[i];
     else
         E1 = f(x[i]) - y1;
@@ -203,41 +200,39 @@ bool examine_example(int &i) {
 
 void work() {
     int num_changed = 0;
-    bool examineAll = true;
-    while (num_changed > 0 || examineAll) {
+    bool examine_all = true;
+    while (num_changed > 0 || examine_all) {
         num_changed = 0;
-        if (examineAll)
+        if (examine_all)
             for (int i = 0; i < n; i++)
-                num_changed += examine_example(i) ? 1 : 0;
+                if(examine_example(i))
+                    ++num_changed;
         else
             for (int i = 0; i < n; i++)
                 if (alp[i] != 0 && alp[i] != C)
-                    num_changed += examine_example(i) ? 1 : 0;
+                    if(examine_example(i))
+                        ++num_changed;
 
-        if (examineAll)
-            examineAll = false;
+        if (examine_all)
+            examine_all = false;
         else if (num_changed == 0)
-            examineAll = true;
+            examine_all = true;
     }
 }
 
 void load_and_init() {
     ifstream ifs("data.txt");
     ifs >> n >> m;
-//    y.reserve(n);
-//    x.reserve(n);
-//    alp.reserve(n);
-//    err.reserve(n);
+    b = 0;
+    for(int i=0;i<n;i++)
+        alp[i] = 0;
     for (int i = 0; i < n; i++) {
-//        x[i].reserve(m);
         for (int j = 0; j < m; j++)
             ifs >> x[i][j];
     }
     for (int i = 0; i < n; i++)
         ifs >> y[i];
     ifs.close();
-
-//    b = 0;
     return;
 }
 
@@ -261,7 +256,7 @@ void save() {
 
 void rand_data() {
     srand(time(0));
-    int _n = 100, _m = 5;
+    int _n = 100, _m = m = 5;
     double _b = double(rand()%1000)/(rand()%1000+1);
     vector<double> _x(_m),_w(_m);
     vector<int> _y(_n);
@@ -301,17 +296,36 @@ void rand_data() {
     ofs.close();
     return;
 }
-
-int main() {
-//    rand_data();
-    load_and_init();
-    for(int k=0;k<n;k++){
-        for(int i=0;i<m;i++)
-            cout<<x[k][i]<<" ";
+void test(){
+    int tot=0;
+    double w[1000];
+    memset(w,0,sizeof(w));
+    for(int i=0;i<n;i++){
+        for(int j=0;j<m;j++)
+            w[j] += alp[i]*y[i]*x[i][j];
+    }
+    for(int i=0;i<n;i++){
+        cout<<i<<":wx-b="<<(dot(w,x[i])-b)<<", y="<<y[i];
+        if((dot(w,x[i])-b)*y[i]>0){
+            cout<<"yes";tot++;
+        }
+        else cout<<"no";
         cout<<endl;
     }
-
+    cout<<"rate:"<<double(tot)/n<<endl;
+}
+int main() {
+    rand_data();
+double startime = clock();
+    load_and_init();
+//    for(int k=0;k<n;k++){
+//        for(int i=0;i<m;i++)
+//            cout<<x[k][i]<<" ";
+//        cout<<endl;
+//    }
     work();
     save();
+    test();
+    cout<<"cost:"<<(clock()-startime)/CLOCKS_PER_SEC<<"s"<<endl;
     return 0;
 }
