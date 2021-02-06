@@ -1,12 +1,9 @@
-//
-// Created by Administrator on 2021/2/6.
-//
 #include<iostream>
 using namespace std;
 const int N = 1e2;
 int DEP,WID[N];
 const double step = 0.2;
-double W[N][N][N], b[N][N], X[N][N], Z[N][N][N];
+double W[N][N][N], b[N][N], X[N][N], Z[N][N];
 double dC_dW[N][N][N], dC_db[N][N], dC_dX[N][N];
 
 double act(const double &x){return x<0?0:x;}
@@ -32,16 +29,16 @@ void front_propagation(){
         fp_act(i);
     }
 }
-void bp_cal_dC_dW(cosnt int &l){
+void bp_cal_dC_dW(const int &l){
     for(int i=0;i<WID[l];i++)
         for(int j=0;j<WID[l-1];j++)
-            dC_dW[l-1][i][j] = dC_dX[l][i]*act_(Z[l][i][j])*X[l-1][j];
+            dC_dW[l-1][i][j] = dC_dX[l][i]*act_(Z[l][i])*X[l-1][j];
 }
 void bp_cal_dC_db(const int &l){
     for(int j=0;j<WID[l-1];j++){
         dC_db[l-1][j] = 0;
         for(int i=0;i<WID[l];i++)
-            dC_db[l-1][j] += dC_dX[l][i]*act_(Z[l][i][j]);
+            dC_db[l-1][j] += dC_dX[l][i]*act_(Z[l][i]);
     }
 }
 void bp_cal_dC_dX(const int &l){
@@ -55,5 +52,6 @@ void back_propagation(){
     for(int i=DEP;i>0;i--){
         bp_cal_dC_dW(i);
         bp_cal_dC_db(i);
+        bp_cal_dC_dX(i);
     }
 }
